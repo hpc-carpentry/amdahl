@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="amdahl",
-    version="1.0",
+    version="0.1",
     author="Alan O'Cais",
     author_email="alan.ocais@cecam.org",
     python_requires=">=3",

@@ -4,6 +4,17 @@ import argparse
 
 from mpi4py import MPI
 
+"""
+Gather timing data in order to plot speedup *S* vs. number of cores *N*,
+which should follow Amdahl's Law:
+
+           1
+    S = -------
+        s + p/N
+
+where *s* is the serial proportion of the total work and *p* the
+parallelizable proportion.
+"""
 
 def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
     # How many MPI ranks (cores) are we?

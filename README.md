@@ -9,20 +9,18 @@ script wrapper. The only requirement is MPI4PY.
 
 ## Background
 
-Amdahl's law posits that some unit of work comprises a proportion *p* that
-benefits from parallel resources, and a proportion *s* that is constrained to
+Amdahl's law posits that some unit of work comprises a proportion $p$ that
+benefits from parallel resources, and a proportion $s$ that is constrained to
 execute in serial. The theoretical maximum speedup achievable for such a
 workload is
 
-```output
-           1
-    S = -------
-        s + p/N
-```
+$$
+S = \frac{1}{s + p/N}
+$$
 
-where *S* is the speedup relative to performing all of the work in serial and
-*N* is the number of parallel workers. A plot of *S* vs. *N* ought to look like
-this, for *p*=0.8:
+where $S$ is the speedup relative to performing all of the work in serial and
+$N$ is the number of parallel workers. A plot of $S$ vs. $N$ ought to look like
+this, for $p = 0.8$:
 
 ```output
   4┬───────────────────────────────────────────────────────────────────────┐
@@ -54,7 +52,7 @@ p  │        ╱      *                                                       �
                                     Workers
 ```
 
-"Ideal scaling" (*p*=1) is would be the line *y* = *x* (or *S* = *N*),
+"Ideal scaling" ($p = 1$) is would be the line $y = x$ (or $S = N$),
 represented here by the diagonal line.
 
 This graph shows there is a speed limit for every workload, and diminishing

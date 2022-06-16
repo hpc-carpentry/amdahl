@@ -23,37 +23,37 @@ $N$ is the number of parallel workers. A plot of $S$ vs. $N$ ought to look like
 this, for $p = 0.8$:
 
 ```output
-  4┬───────────────────────────────────────────────────────────────────────┐
-   │                      ╱                                                │
-   │                     ╱                                                 │
-   │                    ╱                                                  │
-   │                   ╱                                                   *
-   │                  ╱                                            *       │
-   │                 ╱                                     *               │
-   │                ╱                              *                       │
-  3┤               ╱                       *                               │
-S  │              ╱                                                        │
-p  │             ╱                 *                                       │
-e  │            ╱                                                          │
-e  │           ╱           *                                               |
-d  │          ╱                                                            │
-u  │         ╱                                                             │
-p  │        ╱      *                                                       │
-  2┤       ╱                                                               │
-   │      ╱                                                                │
-   │     ╱                                                                 │
-   │    ╱  *                                                               │
-   │   ╱                                                                   │
-   │  ╱                                                                    │
-   │ ╱                                                                     │
-   │╱                                                                      │
+  4┬───────────────────────·───────────────────────────────────────────────┐
+   │                      ·                                                │
+   │                     ·                                                 │
+   │                    ·                                                  │
+   │                   ·                                                   *
+   │                  ·                                            *       │
+   │                 ·                                     *               │
+   │                ·                              *                       │
+  3┤               ·                       *                               │
+S  │              ·                                                        │
+p  │             ·                 *                                       │
+e  │            ·                                                          │
+e  │           ·           *                                               |
+d  │          ·                                                            │
+u  │         ·                                                             │
+p  │        ·      *                                                       │
+  2┤       ·                                                               │
+   │      ·                                                                │
+   │     ·                                                                 │
+   │    ·  *                                                               │
+   │   ·                                                                   │
+   │  ·                                                                    │
+   │ ·                                                                     │
+   │·                                                                      │
   1*───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┤
    1       2       3       4       5       6       7       8       9      10
                                     Workers
 ```
 
 "Ideal scaling" ($p = 1$) is would be the line $y = x$ (or $S = N$),
-represented here by the diagonal line.
+represented here by the dotted line.
 
 This graph shows there is a speed limit for every workload, and diminishing
 returns on throwing more parallel processors at a problem. It is worth running

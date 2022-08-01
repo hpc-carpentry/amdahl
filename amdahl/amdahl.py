@@ -16,7 +16,7 @@ where *s* is the serial proportion of the total work and *p* the
 parallelizable proportion.
 """
 
-def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
+def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=False):
     # How many MPI ranks (cores) are we?
     size = comm.Get_size()
     # Who am I in that set of ranks?
@@ -36,24 +36,25 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
 
         suffix = "" if size == 1 else "s"
 
-        sys.stdout.write(
-            "Doing %f seconds of 'work' on %s processor%s,\n"
-            " which should take %f seconds with %f parallel"
-            " proportion of the workload.\n\n"
-            % (
-                work_time,
-                size,
-                suffix,
-                work_time / amdahl_speed_up,
-                parallel_proportion,
+        if not terse:
+            sys.stdout.write(
+                "Doing %f seconds of 'work' on %s processor%s,\n"
+                " which should take %f seconds with %f parallel"
+                " proportion of the workload.\n\n"
+                % (
+                    work_time,
+                    size,
+                    suffix,
+                    work_time / amdahl_speed_up,
+                    parallel_proportion,
+                )
             )
-        )
 
-        sys.stdout.write(
-            "  Hello, World! I am process %d of %d on %s."
-            " I will do all the serial 'work' for"
-            " %f seconds.\n" % (rank, size, name, serial_sleep_time)
-        )
+            sys.stdout.write(
+                "  Hello, World! I am process %d of %d on %s."
+                " I will do all the serial 'work' for"
+                " %f seconds.\n" % (rank, size, name, serial_sleep_time)
+            )
         time.sleep(serial_sleep_time)
     else:
         parallel_sleep_time = None
@@ -64,10 +65,11 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
     parallel_sleep_time = comm.bcast(parallel_sleep_time, root=0)
 
     # This is where everyone pretends to do work (while really we are just sleeping)
-    sys.stdout.write(
-        "  Hello, World! I am process %d of %d on %s. I will do parallel 'work' for "
-        "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
-    )
+    if not terse:
+        sys.stdout.write(
+            "  Hello, World! I am process %d of %d on %s. I will do parallel 'work' for "
+            "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
+        )
     time.sleep(parallel_sleep_time)
 
 
@@ -93,6 +95,13 @@ def parse_command_line():
         default=30,
         help="Total seconds of workload, should be an integer greater than 0",
     )
+    parser.add_argument(
+        "-t",
+        "--terse",
+        action='store_true',
+        default=False,
+        help="Enable terse output",
+    )
     # Read arguments from command line
     args = parser.parse_args()
     if not args.work_seconds > 0:
@@ -110,19 +119,24 @@ def parse_command_line():
 def amdahl():
     """Amdahl's law illustrator (with fake work)"""
     rank = MPI.COMM_WORLD.Get_rank()
-    # Only the root process handles the command line arguments
+    # All processes handle (at least some) command line arguments
+    args = parse_command_line()
     if rank == 0:
         # Start a clock to measure total time
         start = time.time()
 
-        args = parse_command_line()
-
         do_work(
-            work_time=args.work_seconds, parallel_proportion=args.parallel_proportion
+            work_time=args.work_seconds, parallel_proportion=args.parallel_proportion,
+            terse=args.terse
         )
         end = time.time()
-        sys.stdout.write(
-            "\nTotal execution time (according to rank 0): %f seconds\n" % (end - start)
-        )
+        if args.terse:
+            sys.stdout.write(
+                "%f\n" % (end - start)
+            )
+        else:
+            sys.stdout.write(
+                "\nTotal execution time (according to rank 0): %f seconds\n" % (end - start)
+            )
     else:
-        do_work()
+        do_work(terse=args.terse)

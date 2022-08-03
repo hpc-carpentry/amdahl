@@ -1,6 +1,7 @@
 import time
 import sys
 import argparse
+import json
 
 from mpi4py import MPI
 
@@ -38,7 +39,7 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
 
         if not terse:
             sys.stdout.write(
-                "Doing %f seconds of 'work' on %s processor%s,\n"
+                "Doing %f seconds of 'work' on %s processor %s,\n"
                 " which should take %f seconds with %f parallel"
                 " proportion of the workload.\n\n"
                 % (
@@ -63,6 +64,7 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
     # (this also creates an implicit barrier, blocking processes until they receive
     # the value)
     parallel_sleep_time = comm.bcast(parallel_sleep_time, root=0)
+    terse = comm.bcast(terse, root=0)
 
     # This is where everyone pretends to do work (while really we are just sleeping)
     if not terse:
@@ -71,6 +73,9 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
             "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
         )
     time.sleep(parallel_sleep_time)
+
+    if rank == 0:
+        return (size, serial_sleep_time, parallel_sleep_time)
 
 
 def parse_command_line():
@@ -119,24 +124,33 @@ def parse_command_line():
 def amdahl():
     """Amdahl's law illustrator (with fake work)"""
     rank = MPI.COMM_WORLD.Get_rank()
-    # All processes handle (at least some) command line arguments
-    args = parse_command_line()
+    # Only the root process handles the command line arguments
     if rank == 0:
         # Start a clock to measure total time
         start = time.time()
 
-        do_work(
+        args = parse_command_line()
+
+        (nproc, serial_work, parallel_work) = do_work(
             work_time=args.work_seconds, parallel_proportion=args.parallel_proportion,
             terse=args.terse
         )
         end = time.time()
         if args.terse:
             sys.stdout.write(
-                "%f\n" % (end - start)
+                json.dumps({
+                    'nproc': nproc,
+                    'serial_work': serial_work,
+                    'parallel_work': parallel_work,
+                    'parallel_proportion': args.parallel_proportion,
+                    'execution_time': (end - start)
+                    },
+                    indent=4
+                )+"\n"
             )
         else:
             sys.stdout.write(
                 "\nTotal execution time (according to rank 0): %f seconds\n" % (end - start)
             )
     else:
-        do_work(terse=args.terse)
+        do_work()

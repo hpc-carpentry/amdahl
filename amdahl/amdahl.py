@@ -44,7 +44,7 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
 
         if not terse:
             sys.stdout.write(
-                "Doing %f seconds of 'work' on %s processor %s,\n"
+                "Doing %f seconds of 'work' on %s processor%s,\n"
                 " which should take %f seconds with %f parallel"
                 " proportion of the workload.\n\n"
                 % (

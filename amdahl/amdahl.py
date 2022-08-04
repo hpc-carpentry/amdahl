@@ -2,6 +2,7 @@ import time
 import sys
 import argparse
 import json
+import random
 
 from mpi4py import MPI
 
@@ -17,7 +18,8 @@ where *s* is the serial proportion of the total work and *p* the
 parallelizable proportion.
 """
 
-def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=False):
+
+def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=False, exact=False):
     # How many MPI ranks (cores) are we?
     size = comm.Get_size()
     # Who am I in that set of ranks?
@@ -34,6 +36,9 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
         amdahl_speed_up = 1.0 / (
             (1.0 - parallel_proportion) + parallel_proportion / size
         )
+
+        if not exact:
+            serial_sleep_time = random_jitter(serial_sleep_time)
 
         suffix = "" if size == 1 else "s"
 
@@ -64,6 +69,10 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
     # (this also creates an implicit barrier, blocking processes until they receive
     # the value)
     parallel_sleep_time = comm.bcast(parallel_sleep_time, root=0)
+
+    if not exact:
+        parallel_sleep_time = random_jitter(parallel_sleep_time)
+
     terse = comm.bcast(terse, root=0)
 
     # This is where everyone pretends to do work (while really we are just sleeping)
@@ -76,6 +85,14 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
 
     if rank == 0:
         return (size, serial_sleep_time, parallel_sleep_time)
+
+
+def random_jitter(x, sigma=0.2):
+    """
+    Apply a random offset of ±20% to a value
+    """
+    y_min = x - sigma
+    return y_min + 2 * sigma * random.random()
 
 
 def parse_command_line():
@@ -107,6 +124,13 @@ def parse_command_line():
         default=False,
         help="Enable terse output",
     )
+    parser.add_argument(
+        "-e",
+        "--exact",
+        action='store_true',
+        default=False,
+        help="Disable random jitter",
+    )
     # Read arguments from command line
     args = parser.parse_args()
     if not args.work_seconds > 0:
@@ -124,6 +148,7 @@ def parse_command_line():
 def amdahl():
     """Amdahl's law illustrator (with fake work)"""
     rank = MPI.COMM_WORLD.Get_rank()
+    random.seed(int(time.time()) + rank)
     # Only the root process handles the command line arguments
     if rank == 0:
         # Start a clock to measure total time
@@ -132,8 +157,10 @@ def amdahl():
         args = parse_command_line()
 
         (nproc, serial_work, parallel_work) = do_work(
-            work_time=args.work_seconds, parallel_proportion=args.parallel_proportion,
-            terse=args.terse
+            work_time=args.work_seconds,
+            parallel_proportion=args.parallel_proportion,
+            terse=args.terse,
+            exact=args.exact
         )
         end = time.time()
         if args.terse:

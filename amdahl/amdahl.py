@@ -19,7 +19,11 @@ parallelizable proportion.
 """
 
 
-def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=False, exact=False):
+def do_work(work_time=30,
+            parallel_proportion=0.8,
+            comm=MPI.COMM_WORLD,
+            terse=False,
+            exact=False):
     # How many MPI ranks (cores) are we?
     size = comm.Get_size()
     # Who am I in that set of ranks?
@@ -65,9 +69,9 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
     else:
         parallel_sleep_time = None
 
-    # Tell all processes how much work they need to do using 'bcast' to broadcast
-    # (this also creates an implicit barrier, blocking processes until they receive
-    # the value)
+    # Tell all processes how much work they need to do using 'bcast' to
+    # broadcast (this also creates an implicit barrier, blocking processes
+    # until they receive the value)
     parallel_sleep_time = comm.bcast(parallel_sleep_time, root=0)
 
     if not exact:
@@ -75,10 +79,11 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=Fa
 
     terse = comm.bcast(terse, root=0)
 
-    # This is where everyone pretends to do work (while really we are just sleeping)
+    # This is where everyone pretends to do work (really we are just sleeping)
     if not terse:
         sys.stdout.write(
-            "  Hello, World! I am process %d of %d on %s. I will do parallel 'work' for "
+            "  Hello, World! "
+            "I am process %d of %d on %s. I will do parallel 'work' for "
             "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
         )
     time.sleep(parallel_sleep_time)
@@ -177,7 +182,8 @@ def amdahl():
             )
         else:
             sys.stdout.write(
-                "\nTotal execution time (according to rank 0): %f seconds\n" % (end - start)
+                "\nTotal execution time (according to rank 0): "
+                "%f seconds\n" % (end - start)
             )
     else:
         do_work()

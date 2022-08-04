@@ -1,6 +1,7 @@
 import time
 import sys
 import argparse
+import json
 
 from mpi4py import MPI
 
@@ -16,7 +17,7 @@ where *s* is the serial proportion of the total work and *p* the
 parallelizable proportion.
 """
 
-def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
+def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD, terse=False):
     # How many MPI ranks (cores) are we?
     size = comm.Get_size()
     # Who am I in that set of ranks?
@@ -36,24 +37,25 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
 
         suffix = "" if size == 1 else "s"
 
-        sys.stdout.write(
-            "Doing %f seconds of 'work' on %s processor%s,\n"
-            " which should take %f seconds with %f parallel"
-            " proportion of the workload.\n\n"
-            % (
-                work_time,
-                size,
-                suffix,
-                work_time / amdahl_speed_up,
-                parallel_proportion,
+        if not terse:
+            sys.stdout.write(
+                "Doing %f seconds of 'work' on %s processor %s,\n"
+                " which should take %f seconds with %f parallel"
+                " proportion of the workload.\n\n"
+                % (
+                    work_time,
+                    size,
+                    suffix,
+                    work_time / amdahl_speed_up,
+                    parallel_proportion,
+                )
             )
-        )
 
-        sys.stdout.write(
-            "  Hello, World! I am process %d of %d on %s."
-            " I will do all the serial 'work' for"
-            " %f seconds.\n" % (rank, size, name, serial_sleep_time)
-        )
+            sys.stdout.write(
+                "  Hello, World! I am process %d of %d on %s."
+                " I will do all the serial 'work' for"
+                " %f seconds.\n" % (rank, size, name, serial_sleep_time)
+            )
         time.sleep(serial_sleep_time)
     else:
         parallel_sleep_time = None
@@ -62,13 +64,18 @@ def do_work(work_time=30, parallel_proportion=0.8, comm=MPI.COMM_WORLD):
     # (this also creates an implicit barrier, blocking processes until they receive
     # the value)
     parallel_sleep_time = comm.bcast(parallel_sleep_time, root=0)
+    terse = comm.bcast(terse, root=0)
 
     # This is where everyone pretends to do work (while really we are just sleeping)
-    sys.stdout.write(
-        "  Hello, World! I am process %d of %d on %s. I will do parallel 'work' for "
-        "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
-    )
+    if not terse:
+        sys.stdout.write(
+            "  Hello, World! I am process %d of %d on %s. I will do parallel 'work' for "
+            "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
+        )
     time.sleep(parallel_sleep_time)
+
+    if rank == 0:
+        return (size, serial_sleep_time, parallel_sleep_time)
 
 
 def parse_command_line():
@@ -92,6 +99,13 @@ def parse_command_line():
         type=int,
         default=30,
         help="Total seconds of workload, should be an integer greater than 0",
+    )
+    parser.add_argument(
+        "-t",
+        "--terse",
+        action='store_true',
+        default=False,
+        help="Enable terse output",
     )
     # Read arguments from command line
     args = parser.parse_args()
@@ -117,12 +131,26 @@ def amdahl():
 
         args = parse_command_line()
 
-        do_work(
-            work_time=args.work_seconds, parallel_proportion=args.parallel_proportion
+        (nproc, serial_work, parallel_work) = do_work(
+            work_time=args.work_seconds, parallel_proportion=args.parallel_proportion,
+            terse=args.terse
         )
         end = time.time()
-        sys.stdout.write(
-            "\nTotal execution time (according to rank 0): %f seconds\n" % (end - start)
-        )
+        if args.terse:
+            sys.stdout.write(
+                json.dumps({
+                    'nproc': nproc,
+                    'serial_work': serial_work,
+                    'parallel_work': parallel_work,
+                    'parallel_proportion': args.parallel_proportion,
+                    'execution_time': (end - start)
+                    },
+                    indent=4
+                )+"\n"
+            )
+        else:
+            sys.stdout.write(
+                "\nTotal execution time (according to rank 0): %f seconds\n" % (end - start)
+            )
     else:
         do_work()

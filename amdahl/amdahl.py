@@ -101,6 +101,7 @@ def random_jitter(x, sigma=0.2):
         sys.stdout.write(
             "Illegal value for sigma (%f), should be a float between 0 and 1!\n" % sigma
             "Using 0.2 instead..."
+        )
         sigma = 0.2
     # random() returns a float between 0 and 1, map between -sigma and +sigma
     jitter_percent = sigma * ((random.random() * 2) - 1)

@@ -20,7 +20,7 @@ $$
 
 where $S$ is the speedup relative to performing all of the work in serial and
 $N$ is the number of parallel workers. A plot of $S$ vs. $N$ ought to look like
-this, for $p = 0.89$ ($s = 1 - p = 0.11$):
+this, for $p = 0.89$ ( $s = 1 - p = 0.11$ ):
 
 ```output
   5┬────────┼────────┼────────┼────────·────────┼────────┼────────┼────────┼────────*
@@ -64,7 +64,7 @@ p  │              ·                                                          
                                          Workers
 ```
 
-"Ideal scaling" ($p = 1$) is would be the line $y = x$ (or $S = N$),
+"Ideal scaling" ( $p = 1$ ) is would be the line $y = x$ (or $S = N$),
 represented here by the dotted line.
 
 This graph shows there is a speed limit for every workload, and diminishing

@@ -160,6 +160,7 @@ def parse_command_line():
 def amdahl():
     """Amdahl's law illustrator (with fake work)"""
     rank = MPI.COMM_WORLD.Get_rank()
+    # Ensure that all ranks use a guaranteed unique seed when generating random numbers
     random.seed(int(time.time()) + rank)
     # Only the root process handles the command line arguments
     if rank == 0:

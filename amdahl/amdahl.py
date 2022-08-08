@@ -96,8 +96,15 @@ def random_jitter(x, sigma=0.2):
     """
     Apply a random offset of ±20% to a value
     """
-    y_min = x - sigma
-    return y_min + 2 * sigma * random.random()
+    # Make sure sigma is between 0 and 1
+    if sigma < 0 or sigma > 1 :
+        sys.stdout.write(
+            "Illegal value for sigma (%f), should be a float between 0 and 1!\n" % sigma
+            "Using 0.2 instead..."
+        sigma = 0.2
+    # random() returns a float between 0 and 1, map between -sigma and +sigma
+    jitter_percent = sigma * ((random.random() * 2) - 1)
+    return (1 + jitter_percent) * x
 
 
 def parse_command_line():

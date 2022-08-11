@@ -127,6 +127,7 @@ def do_work(work_time=30,
     if rank == 0:
         # This function returns a "dict" containing named values.
         return {
+            'host': hostname,
             'nproc': num_mpi_ranks,
             'serial_work': serial_sleep_time,
             'parallel_work': parallel_sleep_time

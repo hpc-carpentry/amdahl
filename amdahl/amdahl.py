@@ -14,8 +14,9 @@ which should follow Amdahl's Law:
     S = -------
         s + p/N
 
-where *s* is the serial proportion of the total work and *p* the
-parallelizable proportion.
+where *s* is the serial proportion of the total work,
+      *p* the parallelizable proportion, and
+      *s* + *p* == 1.
 """
 
 
@@ -25,26 +26,36 @@ def do_work(work_time=30,
             terse=False,
             exact=False):
     # How many MPI ranks (cores) are we?
-    size = comm.Get_size()
+    num_mpi_ranks = comm.Get_size()
     # Who am I in that set of ranks?
     rank = comm.Get_rank()
     # Where am I running?
-    name = MPI.Get_processor_name()
+    hostname = MPI.Get_processor_name()
 
     if rank == 0:
+        # Ensure the work_time and parallel_proportion are floats, not integers
+        work_time = float(work_time)
+        parallel_proportion = float(parallel_proportion)
+
+        # Derive the serial proportion from the parallel work proportion
+        serial_proportion = 1 - parallel_proportion
+
         # Set the sleep times (which are used to fake the amount of work)
-        serial_sleep_time = float(work_time) * (1.0 - parallel_proportion)
-        parallel_sleep_time = (float(work_time) * parallel_proportion) / size
+        serial_sleep_time = work_time * serial_proportion
+        parallel_sleep_time = work_time * parallel_proportion / num_mpi_ranks
 
         # Use Amdahl's law to calculate the expected speedup for this workload
         amdahl_speed_up = 1.0 / (
-            (1.0 - parallel_proportion) + parallel_proportion / size
+            serial_proportion + (parallel_proportion / num_mpi_ranks)
         )
 
         if not exact:
             serial_sleep_time = random_jitter(serial_sleep_time)
 
-        suffix = "" if size == 1 else "s"
+        if num_mpi_ranks == 1:
+            suffix = ""
+        else:
+            suffix = "s"
 
         if not terse:
             sys.stdout.write(
@@ -53,7 +64,7 @@ def do_work(work_time=30,
                 " proportion of the workload.\n\n"
                 % (
                     work_time,
-                    size,
+                    num_mpi_ranks,
                     suffix,
                     work_time / amdahl_speed_up,
                     parallel_proportion,
@@ -63,33 +74,60 @@ def do_work(work_time=30,
             sys.stdout.write(
                 "  Hello, World! I am process %d of %d on %s."
                 " I will do all the serial 'work' for"
-                " %f seconds.\n" % (rank, size, name, serial_sleep_time)
+                " %f seconds.\n"
+                % (
+                    rank,
+                    num_mpi_ranks,
+                    hostname,
+                    serial_sleep_time
+                )
             )
         time.sleep(serial_sleep_time)
     else:
         parallel_sleep_time = None
 
-    # Tell all processes how much work they need to do using 'bcast' to
-    # broadcast (this also creates an implicit barrier, blocking processes
-    # until they receive the value)
+    # Tell all processes how much work they need to do using a broadcast
+    # ('bcast') from the root rank. The 'bcast' function contains an MPI
+    # "barrier", a function that no rank can exit until all ranks have
+    # called it. This means that although the non-root ranks call the 'do_work'
+    # function before the root rank, they all have to wait until the root rank
+    # reaches this line and broadcasts its data before they can proceed.
     parallel_sleep_time = comm.bcast(parallel_sleep_time, root=0)
 
-    if not exact:
-        parallel_sleep_time = random_jitter(parallel_sleep_time)
-
+    # Similarly, broadcast whether processes should print their status as they
+    # work or silently complete their tasks.
     terse = comm.bcast(terse, root=0)
 
-    # This is where everyone pretends to do work (really we are just sleeping)
+    if not exact:
+        # Each rank applies its own random deviation to the amount of time
+        # it sleeps, in order to more accurately simulate variance in workloads
+        # observed in real applications.
+        parallel_sleep_time = random_jitter(parallel_sleep_time)
+
     if not terse:
+        # Announce to the world what you're about to do.
         sys.stdout.write(
             "  Hello, World! "
             "I am process %d of %d on %s. I will do parallel 'work' for "
-            "%f seconds.\n" % (rank, size, name, parallel_sleep_time)
+            "%f seconds.\n"
+            % (
+                rank,
+                num_mpi_ranks,
+                hostname,
+                parallel_sleep_time
+            )
         )
+
+    # This is where everyone pretends to do work (really we are just sleeping)
     time.sleep(parallel_sleep_time)
 
     if rank == 0:
-        return (size, serial_sleep_time, parallel_sleep_time)
+        # This function returns a "dict" containing named values.
+        return {
+            'nproc': num_mpi_ranks,
+            'serial_work': serial_sleep_time,
+            'parallel_work': parallel_sleep_time
+        }
 
 
 def random_jitter(x, sigma=0.2):
@@ -112,7 +150,8 @@ def random_jitter(x, sigma=0.2):
 def parse_command_line():
     # Initialize our argument parser
     parser = argparse.ArgumentParser()
-    # Adding optional arguments
+
+    # Register available arguments and their default values
     parser.add_argument(
         "-p",
         "--parallel-proportion",
@@ -120,7 +159,7 @@ def parse_command_line():
         const=0.8,
         type=float,
         default=0.8,
-        help="Parallel proportion should be a float between 0 and 1",
+        help="Parallel proportion: a float between 0 and 1",
     )
     parser.add_argument(
         "-w",
@@ -129,21 +168,21 @@ def parse_command_line():
         const=30,
         type=int,
         default=30,
-        help="Total seconds of workload, should be an integer greater than 0",
+        help="Total seconds of workload: an integer greater than 0",
     )
     parser.add_argument(
         "-t",
         "--terse",
         action='store_true',
         default=False,
-        help="Enable terse output",
+        help="Format output as a machine-readable object for easier analysis",
     )
     parser.add_argument(
         "-e",
         "--exact",
         action='store_true',
         default=False,
-        help="Disable random jitter",
+        help="Exactly match requested timing by disabling random jitter",
     )
     # Read arguments from command line
     args = parser.parse_args()
@@ -160,40 +199,50 @@ def parse_command_line():
 
 
 def amdahl():
-    """Amdahl's law illustrator (with fake work)"""
-    rank = MPI.COMM_WORLD.Get_rank()
-    # Ensure that all ranks use a guaranteed unique seed when generating random numbers
-    random.seed(int(time.time()) + rank)
-    # Only the root process handles the command line arguments
-    if rank == 0:
-        # Start a clock to measure total time
-        start = time.time()
+    """Amdahl's Law illustrator (with fake work)"""
+    # Start a clock to measure total time
+    start = time.time()
 
+    # Get the identity of this rank
+    rank = MPI.COMM_WORLD.Get_rank()
+
+    # Ensure that each parallel rank uses its own unique seed, else the
+    # generated numbers will be identical sequences -- not random at all!
+    random.seed(int(time.time()) + rank)
+
+    # Only the root process reads the command line arguments.
+    if rank == 0:
         args = parse_command_line()
 
-        (nproc, serial_work, parallel_work) = do_work(
+    # Every MPI rank must call the do_work() function.
+    if rank == 0:
+        # The root rank supplies arguments to the function,
+        # parsed from the command line.
+        summary = do_work(
             work_time=args.work_seconds,
             parallel_proportion=args.parallel_proportion,
             terse=args.terse,
             exact=args.exact
         )
-        end = time.time()
+    else:
+        # All other ranks start with default parameters, which will be
+        # overwritten with values broadcast from the root rank.
+        do_work()
+
+    # Stop the clock
+    end = time.time()
+
+    # Only the root rank writes output to the terminal.
+    if rank == 0:
+        summary["parallel_proportion"] = args.parallel_proportion
+        summary["execution_time"] = (end - start)
+
         if args.terse:
             sys.stdout.write(
-                json.dumps({
-                    'nproc': nproc,
-                    'serial_work': serial_work,
-                    'parallel_work': parallel_work,
-                    'parallel_proportion': args.parallel_proportion,
-                    'execution_time': (end - start)
-                    },
-                    indent=4
-                )+"\n"
+                json.dumps(summary, indent=4) + "\n"
             )
         else:
             sys.stdout.write(
                 "\nTotal execution time (according to rank 0): "
-                "%f seconds\n" % (end - start)
+                "%f seconds\n" % summary["execution_time"]
             )
-    else:
-        do_work()

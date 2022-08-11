@@ -22,6 +22,7 @@ where *s* is the serial proportion of the total work,
 
 def do_work(work_time=30,
             parallel_proportion=0.8,
+            jitter_proportion=0.2,
             comm=MPI.COMM_WORLD,
             terse=False,
             exact=False):
@@ -50,7 +51,8 @@ def do_work(work_time=30,
         )
 
         if not exact:
-            serial_sleep_time = random_jitter(serial_sleep_time)
+            serial_sleep_time = random_jitter(serial_sleep_time,
+                                              jitter_proportion)
 
         if num_mpi_ranks == 1:
             suffix = ""
@@ -102,7 +104,8 @@ def do_work(work_time=30,
         # Each rank applies its own random deviation to the amount of time
         # it sleeps, in order to more accurately simulate variance in workloads
         # observed in real applications.
-        parallel_sleep_time = random_jitter(parallel_sleep_time)
+        parallel_sleep_time = random_jitter(parallel_sleep_time,
+                                            jitter_proportion)
 
     if not terse:
         # Announce to the world what you're about to do.
@@ -130,21 +133,28 @@ def do_work(work_time=30,
         }
 
 
-def random_jitter(x, sigma=0.2):
+def random_jitter(value, scaling=0.2):
     """
-    Apply a random offset of ±20% to a value
+    Randomly increase a value up to the specified scaling factor
+    (use a negative argument to decrease the value instead)
     """
-    # Make sure sigma is between 0 and 1
-    if sigma < 0 or sigma > 1:
+    # Make sure scaling is between -1 and +1
+    if abs(scaling) > 1:
+        sign = scaling / abs(scaling)
         sys.stdout.write(
-            "Illegal value for sigma ({}), "
-            "should be a float between 0 and 1!\n"
-            "Using 0.2 instead...".format(sigma)
+            "Changing the value by {:.0f}% isn't jitter, "
+            "that's an earthquake!\n"
+            "Using {:.1f} instead...".format(
+                100 * sign * scaling,
+                sign * 0.2
+            )
         )
-        sigma = 0.2
-    # random() returns a float between 0 and 1, map between -sigma and +sigma
-    jitter_proportion = sigma * ((random.random() * 2) - 1)
-    return (1 + jitter_proportion) * x
+        scaling = 0.2 * sign
+
+    # random() returns a float between 0 and 1, scale it down
+    jitter_proportion = scaling * random.random()
+
+    return (1 + jitter_proportion) * value
 
 
 def parse_command_line():
@@ -184,6 +194,16 @@ def parse_command_line():
         default=False,
         help="Exactly match requested timing by disabling random jitter",
     )
+    parser.add_argument(
+        "-j",
+        "--jitter-proportion",
+        nargs="?",
+        const=0.2,
+        type=float,
+        default=0.2,
+        help="Random jitter: a float between -1 and +1",
+    )
+
     # Read arguments from command line
     args = parser.parse_args()
     if not args.work_seconds > 0:
@@ -191,6 +211,10 @@ def parse_command_line():
         MPI.COMM_WORLD.Abort(1)
         sys.exit(1)
     if args.parallel_proportion <= 0 or args.parallel_proportion > 1:
+        parser.print_help()
+        MPI.COMM_WORLD.Abort(1)
+        sys.exit(1)
+    if abs(args.jitter_proportion) > 1:
         parser.print_help()
         MPI.COMM_WORLD.Abort(1)
         sys.exit(1)
@@ -221,6 +245,7 @@ def amdahl():
         summary = do_work(
             work_time=args.work_seconds,
             parallel_proportion=args.parallel_proportion,
+            jitter_proportion=args.jitter_proportion,
             terse=args.terse,
             exact=args.exact
         )

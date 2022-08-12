@@ -1,10 +1,10 @@
 # What does this package do?
 
-This python module contains a pseudo-application that can be used as a black
+This Python module contains a pseudo-application that can be used as a black
 box to reproduce Amdahl's Law. It does not do real calculations, nor any real
 communication, so can easily be overloaded.
 
-The application is installed as a python module with a shell
+The application is installed as a Python module with a shell
 script wrapper. The only requirement is MPI4PY.
 
 ## Background
@@ -71,3 +71,25 @@ This graph shows there is a speed limit for every workload, and diminishing
 returns on throwing more parallel processors at a problem. It is worth running
 a "scaling study" to assess how far away that speed limit might be for the
 given task.
+
+## Setup
+
+An external requirement is an Message Passing Interface (MPI) library, examples
+include [OpenMPI](https://www.open-mpi.org/) and [MPICH](https://www.mpich.org/).
+
+Once an MPI  library is installed, there are several ways to install this.
+
+### Pip
+
+Amdahl is available on [Pypi](https://pypi.org/project/amdahl/)
+
+```
+pip install --user amdahl
+```
+
+## Running
+
+Once installed, you can run the program using
+```
+mpirun -np 2 amdahl
+```

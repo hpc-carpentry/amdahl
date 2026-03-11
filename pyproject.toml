@@ -4,7 +4,7 @@ requires = [ "setuptools" ]
 
 [project]
 name = "amdahl"
-version = "0.4.0"
+version = "0.4.1"
 description = "A pseudo-application that can be used as a black box to reproduce Amdahl's Law"
 readme = "README.md"
 license = "MIT"

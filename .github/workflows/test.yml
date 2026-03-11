@@ -1,4 +1,4 @@
-name: Test
+name: Smoke test
 
 on:
   push:
@@ -31,4 +31,4 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install .
       - run: amdahl --help
-      # - run: mpirun -np 2 amdahl
+      - run: mpirun -np 1 amdahl --work-seconds 10

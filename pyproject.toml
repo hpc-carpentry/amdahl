@@ -1,0 +1,28 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [ "setuptools" ]
+
+[project]
+name = "amdahl"
+version = "0.4.0"
+description = "A pseudo-application that can be used as a black box to reproduce Amdahl's Law"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3"
+authors = [
+  { name = "Alan O'Cais", email = "alan.ocais@cecam.org" },
+]
+dependencies = [
+  "mpi4py",
+]
+
+[project.scripts]
+amdahl = "amdahl.amdahl:amdahl"
+
+[project.urls]
+Homepage = "https://github.com/hpc-carpentry/amdahl"
+Issues = "https://github.com/hpc-carpentry/amdahl/issues"
+Repository = "https://github.com/hpc-carpentry/amdahl.git"
+
+[tool.setuptools.packages.find]
+include = [ "amdahl*" ]

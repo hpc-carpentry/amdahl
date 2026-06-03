@@ -139,18 +139,8 @@ def random_jitter(value, scaling=0.2):
     Randomly increase a value up to the specified scaling factor
     (use a negative argument to decrease the value instead)
     """
-    # Make sure scaling is between -1 and +1
-    if abs(scaling) > 1:
-        sign = scaling / abs(scaling)
-        sys.stdout.write(
-            "Changing the value by {:.0f}% isn't jitter, "
-            "that's an earthquake!\n"
-            "Using {:.1f} instead...".format(
-                100 * sign * scaling,
-                sign * 0.2
-            )
-        )
-        scaling = 0.2 * sign
+    # Scaling bounds are checked at command-line parsing time,
+    # no need to re-check.
 
     # random() returns a float between 0 and 1, scale it down
     jitter_proportion = scaling * random.random()

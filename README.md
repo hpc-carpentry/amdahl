@@ -114,6 +114,12 @@ deactivate
 rm -rf venv_amdahl
 ```
 
+Yet another alternative is using either [EESSI/2023.06 or EESSI/2025.06](https://www.eessi.io/docs/available_software/?search=amdahl), and the python package can be loaded as a module with the following, 
+
+```shell
+module load amdahl
+```
+
 ## Usage
 
 Once installed, you can run the program using
